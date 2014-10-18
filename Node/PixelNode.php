@@ -14,7 +14,10 @@ class PixelNode extends ImageNode
 		return $this;
 	}
 
-
+	public function __toString()
+	{
+		return parent::__toString() . " : " . json_encode($this->color);
+	}
 
 	public function createInBase()
 	{
@@ -44,12 +47,13 @@ class PixelNode extends ImageNode
 
 	public function createNodePoints()
 	{
-		// 4 coins : haut-gauche, haut-droit, bas-gauche, bas-droit
 		for($px = $this->x; $px <= $this->x + 1; $px++) {
-			for($py = $this->y; $py <= $this->y; $py++) {
+			for($py = $this->y; $py <= $this->y + 1; $py++) {
 				$pointNode = new PointNode($px, $py, $this->neo4jClient);
 				$pointNode->setPixelNode($this)
-					->createInBase();
+					->createInBase()
+					->createCornerRelationships();
+				unset($pointNode);
 			}
 		}
 		// Pour chaque bordure (haut, bas, gauche, droite)

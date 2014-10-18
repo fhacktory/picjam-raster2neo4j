@@ -37,14 +37,27 @@ class PointNode extends ImageNode
 
 		$node->save();
 
+		$this->neo4jClient->commitBatch();
+		$node->addLabels(array(self::$label));
+
+		$this->dbNode = $node;
+		return $this;
+	}
+
+	/**
+	 * @return $this
+	 * @throws Exception
+	 * @throws \Everyman\Neo4j\Exception
+	 */
+	public function createCornerRelationships()
+	{
+		$node = $this->getDbNode();
+
 		$pixelRelationship = $this->neo4jClient->makeRelationship();
 		$pixelRelationship->setStartNode($node)
 			->setEndNode($this->pixelNode->getDbNode())
 			->setType('CORNER_OF')
 			->save();
-
-		$this->neo4jClient->commitBatch();
-		$node->addLabels(array(self::$label));
 
 		return $this;
 	}

@@ -25,7 +25,7 @@ class ImageNode
 
 	public function __toString()
 	{
-		return static::NODE_LABEL . " (" . $this->x . ", " . $this->y .") : " . json_encode($this->color);
+		return static::NODE_LABEL . " (" . $this->x . ", " . $this->y .")";
 	}
 
 	public function getDbNode()
@@ -37,7 +37,7 @@ class ImageNode
 		$queryString = "
 			MATCH (p)
 			WHERE
-				p:Pixel
+				p:" . static::NODE_LABEL . "
 				AND p.x = {x}
 				AND p.y = {y}
 			RETURN p
