@@ -8,7 +8,7 @@ class PointNode
 	private $y;
 	private $neo4jClient;
 	/**
-	 * @var NodePixel
+	 * @var PixelNode
 	 */
 	private $pixelNode;
 
@@ -21,7 +21,7 @@ class PointNode
 		$this->neo4jClient = $neo4jClient;
 	}
 
-	public function setPixelNode(NodePixel $node)
+	public function setPixelNode(PixelNode $node)
 	{
 		$this->pixelNode = $node;
 		return $this;

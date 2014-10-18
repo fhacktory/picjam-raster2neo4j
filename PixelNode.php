@@ -1,5 +1,5 @@
 <?php
-class NodePixel
+class PixelNode
 {
 	private static $label;
 
@@ -27,7 +27,7 @@ class NodePixel
 
 	public static function initLabel($client)
 	{
-		self::$label = $client->makeLabel(NodePixel::PIXEL_LABEL);
+		self::$label = $client->makeLabel(PixelNode::PIXEL_LABEL);
 		return self::$label;
 	}
 
