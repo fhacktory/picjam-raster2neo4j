@@ -1,6 +1,7 @@
 <?php
 require("vendor/autoload.php");
 require(__DIR__ . '/RasterImage.php');
+require(__DIR__ . "/Node/ImageNode.php");
 require(__DIR__ . '/Node/PixelNode.php');
 require(__DIR__ . '/Node/PointNode.php');
 

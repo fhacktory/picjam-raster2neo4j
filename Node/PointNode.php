@@ -1,25 +1,14 @@
 <?php
-class PointNode
+class PointNode extends ImageNode
 {
-	private static $label;
+	protected static $label;
 
-	private $id;
-	private $x;
-	private $y;
-	private $neo4jClient;
 	/**
 	 * @var PixelNode
 	 */
 	private $pixelNode;
 
-	const POINT_LABEL = 'Point';
-
-	public function __construct($x, $y, Everyman\Neo4j\Client $neo4jClient)
-	{
-		$this->x = $x;
-		$this->y = $y;
-		$this->neo4jClient = $neo4jClient;
-	}
+	const NODE_LABEL = 'Point';
 
 	public function setPixelNode(PixelNode $node)
 	{
@@ -27,48 +16,10 @@ class PointNode
 		return $this;
 	}
 
-	public static function initLabel($client)
-	{
-		self::$label = $client->makeLabel(PointNode::POINT_LABEL);
-		return self::$label;
-	}
-
-	public function loadFromBase()
-	{
-		$queryString = "
-			MATCH (p)
-			WHERE
-				p:Point
-				AND p.x = {x}
-				AND p.y = {y}
-			RETURN p
-		";
-
-		$query = new Everyman\Neo4j\Cypher\Query(
-			$this->neo4jClient,
-			$queryString,
-			array(
-				'x' => $this->x,
-				'y' => $this->y
-			)
-		);
-		$result = $query->getResultSet();
-
-		if ($result->count() > 1) {
-			throw new Exception(
-				"Invalid number of point nodes for the coordinates ({$this->x}, {$this->y}),
-				number : " . $result->count());
-		}
-		foreach($result as $row) {
-			$this->id = $row['p']->getId();
-		}
-		return $this->id;
-	}
-
 	public function createInBase()
 	{
-		$id = $this->loadFromBase();
-		if(! empty($id)) {
+		$node = $this->getDbNode();
+		if(! empty($node)) {
 			return $this;
 		}
 
