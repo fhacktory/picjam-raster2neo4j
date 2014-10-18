@@ -4,6 +4,7 @@ require(__DIR__ . '/RasterImage.php');
 require(__DIR__ . "/Node/ImageNode.php");
 require(__DIR__ . '/Node/PixelNode.php');
 require(__DIR__ . '/Node/PointNode.php');
+require(__DIR__ . '/Relationship/BorderRelationship.php');
 
 $client = new Everyman\Neo4j\Client();
 PixelNode::initLabel($client);

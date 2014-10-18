@@ -2,8 +2,6 @@
 class PointNode extends ImageNode
 {
 	protected static $label;
-	const BORDER_RELATIONSHIP_NAME = 'BORDER';
-
 	/**
 	 * @var PixelNode
 	 */
@@ -65,32 +63,12 @@ class PointNode extends ImageNode
 
 	public function createBorderWith(PointNode $neighbour)
 	{
-		$borderRelationshipList = $this->dbNode->getRelationships(array(self::BORDER_RELATIONSHIP_NAME));
-		foreach($borderRelationshipList as $borderRelationship)
-		{
-			/**
-			 * @var Everyman\Neo4j\Relationship $borderRelationship
-			 */
-			$neighbourId = $neighbour->getDbNode()->getId();
-			if ($borderRelationship->getEndNode()->getId() == $neighbourId
-				|| $borderRelationship->getStartNode()->getId() == $neighbourId
-			)
-			{
-				// calculer poids
-				return $this;
-			}
+		$borderRelationship = new BorderRelationship($this, $neighbour, $this->neo4jClient);
+		if($borderRelationship->isExists()) {
+			$borderRelationship->updateWeight();
+		} else {
+			$borderRelationship->createInBase();
 		}
-
-		$borderRelationship = $this->neo4jClient->makeRelationship();
-		$borderRelationship->setStartNode($this->getDbNode())
-			->setEndNode($neighbour->getDbNode())
-			->setType(self::BORDER_RELATIONSHIP_NAME)
-			->save();
-
 		return $this;
-		// si n'existe pas
-				// créer la relation avec poids de 2
-				// si existe
-				// calculer et mettre à jour le poids
 	}
 }
