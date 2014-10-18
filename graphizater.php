@@ -1,8 +1,8 @@
 <?php
 require("vendor/autoload.php");
 require(__DIR__ . '/RasterImage.php');
-require(__DIR__ . '/PixelNode.php');
-require(__DIR__ . '/PointNode.php');
+require(__DIR__ . '/Node/PixelNode.php');
+require(__DIR__ . '/Node/PointNode.php');
 
 $client = new Everyman\Neo4j\Client();
 PixelNode::initLabel($client);
