@@ -3,11 +3,13 @@ class ImageNode
 {
 	const NODE_LABEL = 'UNDEFINED';
 
-	protected $id;
 	protected $x;
 	protected $y;
 
 	protected $neo4jClient;
+	/**
+	 * @var Everyman\Neo4j\Node
+	 */
 	protected $dbNode = null;
 
 	public function __construct($x, $y, Everyman\Neo4j\Client $neo4jClient)
@@ -60,7 +62,6 @@ class ImageNode
 		}
 		foreach($result as $row) {
 			$this->dbNode = $row['p'];
-			$this->id = $this->dbNode->getId();
 		}
 		return $this->dbNode;
 	}

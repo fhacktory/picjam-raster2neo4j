@@ -47,19 +47,33 @@ class PixelNode extends ImageNode
 
 	public function createNodePoints()
 	{
+		$corners = array(
+			$this->x => array(),
+			($this->x + 1) => array()
+		);
+
+
 		for($px = $this->x; $px <= $this->x + 1; $px++) {
 			for($py = $this->y; $py <= $this->y + 1; $py++) {
 				$pointNode = new PointNode($px, $py, $this->neo4jClient);
 				$pointNode->setPixelNode($this)
 					->createInBase()
 					->createCornerRelationships();
-				unset($pointNode);
+
+				$corners[$px][$py] = $pointNode;
 			}
 		}
+
 		// Pour chaque bordure (haut, bas, gauche, droite)
-			// si n'existe pas
-				// créer la relation avec poids de 2
-			// si existe
-				// calculer et mettre à jour le poids
+		$topLeft = $corners[$this->x][$this->y];
+		$topRight = $corners[$this->x + 1][$this->y];
+		$bottomLeft = $corners[$this->x][$this->y + 1];
+		$bottomRight = $corners[$this->x + 1][$this->y + 1];
+
+		$topLeft->createBorderWith($topRight)
+			->createBorderWith($bottomLeft);
+
+		$bottomRight->createBorderWith($topRight)
+			->createBorderWith($bottomLeft);
 	}
 }
