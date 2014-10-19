@@ -38,20 +38,22 @@ foreach($result as $row) {
 	$node2 = new SvgNode($row['n2']);
 
 	$node1Id = $node1->getDbNode()->getId();
+	$node2Id = $node2->getDbNode()->getId();
+
 	if ($arities->issetNodeArity($node1Id)) {
-		$arities->getNodeArity($node1Id)->addNeighbour($node2->getDbNode()->getId());
+		$arities->getNodeArity($node1Id)->addNeighbour($node2Id);
 	} else {
-		$arities->setNodeArity($node1Id, new NodeArity(array($node2->getDbNode()->getId())));
+		$arities->setNodeArity($node1Id, new NodeArity(array($node2Id)));
 		$nodes[] = $node1Id;
 		$index[$node1Id] = $node1;
 		$colors->initNodeColor($node1Id);
 	}
 
-	$node2Id = $node2->getDbNode()->getId();
+
 	if ($arities->issetNodeArity($node2Id)) {
-		$arities->getNodeArity($node2Id)->addNeighbour($node1->getDbNode()->getId());
+		$arities->getNodeArity($node2Id)->addNeighbour($node1Id);
 	} else {
-		$arities->setNodeArity($node2Id, new NodeArity(array($node1->getDbNode()->getId())));
+		$arities->setNodeArity($node2Id, new NodeArity(array($node1Id)));
 		$nodes[] = $node2Id;
 		$index[$node2Id] = $node2;
 		$colors->initNodeColor($node2Id);
@@ -85,7 +87,7 @@ function searchPolygons($nodes, NodeArityCollection $arities, $index, NodeColorC
 		//echo $node->getProperty('x') . ' - ' . $node->getProperty('y') . " : $arity - $colorsCount\n";
 		if ((! $isBorder && $arity > $colorsCount) ||  ($isBorder && $arity - 1 > $colorsCount))
 		{
-			echo "$nodeId - " . $node->getDbNode()->getProperty('x') . ' : ' . $node->getDbNode()->getProperty('y') . "\n";
+			//echo "$nodeId - " . $node->getDbNode()->getProperty('x') . ' : ' . $node->getDbNode()->getProperty('y') . "\n";
 			$polygon = searchPolygon(array(), $node, $arities, $index, $colors, 1);
 			//var_dump(count($polygon));
 			$polygons[] = $polygon;
@@ -126,7 +128,7 @@ function purgeUselessNodes($nodes, NodeArityCollection $arities, $index)
 }
 
 function searchPolygon($currentPolygon, SvgNode $currentNode, NodeArityCollection $arities, $index, NodeColorCollection $colors, $polygonId) {
-	echo "## - " . $currentNode->getDbNode()->getProperty('x') . ' : ' . $currentNode->getDbNode()->getProperty('y') . "\n";
+	//echo "## - " . $currentNode->getDbNode()->getProperty('x') . ' : ' . $currentNode->getDbNode()->getProperty('y') . "\n";
 	if(empty($currentPolygon)) {
 		// polygon beginning
 		$lastNode = $currentNode;
