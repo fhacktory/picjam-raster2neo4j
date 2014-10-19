@@ -37,7 +37,7 @@ foreach($result as $row) {
 		$arities[$node1Id][]= $node2->getId();
 	} else {
 		$arities[$node1Id] = array($node2->getId());
-		$nodes[] = $node1;
+		$nodes[] = $node1Id;
 		$index[$node1Id] = $node1;
 		$colors[$node1Id] = array();
 	}
@@ -47,70 +47,39 @@ foreach($result as $row) {
 		$arities[$node2Id][]= $node1->getId();
 	} else {
 		$arities[$node2Id] = array($node1->getId());
-		$nodes[] = $node2;
+		$nodes[] = $node2Id;
 		$index[$node2Id] = $node2;
 		$colors[$node2Id] = array();
 	}
 }
 
-list($nodes, $arities) = purgeUselessNodes($nodes, $arities, $index);
+do {
+	$previousCount = count($nodes);
+	list($nodes, $arities) = purgeUselessNodes($nodes, $arities, $index);
+	$currentCount = count($nodes);
+} while($previousCount !== $currentCount);
+
 
 $polygons = searchPolygons($nodes, $arities, $index, $colors);
 //var_dump(count($polygons));
-
 $svg = traceSvg($polygons);
-
 file_put_contents(__DIR__ . '/test.svg', $svg);
-
-function traceSvg($polygons) {
-	$svg = '';
-
-	foreach($polygons as $polygon) {
-		$svg .= polygonToSvg($polygon);
-	}
-
-	$header = '
-	<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-	<svg width="4cm" height="4cm" viewBox="0 0 400 400"
-     xmlns="http://www.w3.org/2000/svg" version="1.1">';
-	return $header . $svg . '</svg>';
-}
-
-function polygonToSvg($polygon) {
-	$path = '<path d="';
-	$first = true;
-	foreach($polygon as $node) {
-		$x = $node->getProperty('x');
-		$y = $node->getProperty('y');
-
-		if ($first) {
-			$path .= ' M ';
-			$first = false;
-		} else {
-			$path .= ' L ';
-		}
-		$path .= $x . ' ' . $y;
-
-	}
-
-	$path .= 'z" style="stroke: black;fill:none;"/>';
-
-	return $path;
-}
-
 
 function searchPolygons($nodes, $arities, $index, &$colors) {
 	$polygons = array();
+$first = true;
+	foreach($nodes as $nodeId) {
+		$node = $index[$nodeId];
 
-	foreach($nodes as $node) {
 		$arity = count($arities[$node->getId()]);
 		$colorsCount = count($colors[$node->getId()]);
 
 		$isBorder = isBorder($node);
 
 		//echo $node->getProperty('x') . ' - ' . $node->getProperty('y') . " : $arity - $colorsCount\n";
-		if ((! $isBorder && $arity > $colorsCount) ||  ($isBorder && $arity - 1 > $colorsCount)) {
-
+		if ((! $isBorder && $arity > $colorsCount) ||  ($isBorder && $arity - 1 > $colorsCount))
+		{
+			echo "$nodeId - " . $node->getProperty('x') . ' : ' . $node->getProperty('y') . "\n";
 			$polygon = searchPolygon(array(), $node, $arities, $index, $colors, 1);
 			//var_dump(count($polygon));
 			$polygons[] = $polygon;
@@ -121,22 +90,23 @@ function searchPolygons($nodes, $arities, $index, &$colors) {
 }
 
 function isBorder($node) {
-	$width = 20;
-	$height = 20;
+	$width = 100;
+	$height = 100;
 	$x = $node->getProperty('x');
 	$y = $node->getProperty('y');
 
 	return $x == 0 || $y == 0 || $x == $width || $y == $height;
 }
 
-function purgeUselessNodes($nodes, $arities)
+function purgeUselessNodes($nodes, $arities, $index)
 {
 	$result = array();
 	$removed = array();
-	foreach($nodes as $node) {
+	foreach($nodes as $nodeId) {
+		$node = $index[$nodeId];
 		$arity = $arities[$node->getId()];
 		if (count($arity) > 1) {
-			$result[] = $node;
+			$result[] = $nodeId;
 			$removed[$node->getId()] = false;
 		} else {
 			$removed[$node->getId()] = true;
@@ -159,12 +129,19 @@ function purgeUselessNodes($nodes, $arities)
 }
 
 function searchPolygon($currentPolygon, $currentNode, $arities, $index, &$colors, $polygonId) {
-	//echo $currentNode->getProperty('x') . ' - ' . $currentNode->getProperty('y') . "\n";
+	echo "## - " . $currentNode->getProperty('x') . ' : ' . $currentNode->getProperty('y') . "\n";
 	if(empty($currentPolygon)) {
 		// polygon beginning
 		$lastNode = null;
-		$nextNode = getNextNode($currentNode, $lastNode, $arities, $index);
-		return searchPolygon(array($currentNode), $nextNode, $arities, $index, $colors, $polygonId);
+		try {
+			$nextNode = getNextNode($currentNode, $lastNode, $arities, $index, $colors);
+		} catch( Exception $e) {
+			echo $e->getMessage() . "\n";
+			return $currentPolygon;
+		}
+		$res = searchPolygon(array($currentNode), $nextNode, $arities, $index, $colors, $polygonId);
+		$colors[$currentNode->getId()][] = $polygonId;
+		return $res;
 	}
 
 	if($currentPolygon[0] == $currentNode) {
@@ -175,12 +152,23 @@ function searchPolygon($currentPolygon, $currentNode, $arities, $index, &$colors
 	$lastNode = $currentPolygon[count($currentPolygon) - 1];
 	$currentPolygon[] = $currentNode;
 	$colors[$currentNode->getId()][] = $polygonId;
+	if(count($colors[$currentNode->getId()]) > count($arities[$currentNode->getId()])) {
+		echo "erreur";
+		return $currentPolygon;
+	}
 
-	$nextNode = getNextNode($currentNode, $lastNode, $arities, $index);
+	try
+	{
+		$nextNode = getNextNode($currentNode, $lastNode, $arities, $index, $colors);
+	} catch (Exception $e) {
+		echo $e->getMessage() . "\n";
+		return $currentPolygon;
+	}
+
 	return searchPolygon($currentPolygon, $nextNode, $arities, $index, $colors, $polygonId);
 }
 
-function getNextNode($currentNode, $lastNode, $arities, $index) {
+function getNextNode($currentNode, $lastNode, $arities, $index, $colors) {
 	if (empty($lastNode)) {
 		$lastDirection = array(0, -1);
 	} else {
@@ -216,14 +204,59 @@ function getNextNode($currentNode, $lastNode, $arities, $index) {
 
 	foreach(array(-1, 0, 1) as $priority) {
 		if (isset($neighbours[$priority])) {
-			return $neighbours[$priority];
+
+			$isBorder = isBorder($neighbours[$priority]);
+			$arity = count($arities[$neighbours[$priority]->getId()]);
+			$colorsCount = count($colors[$neighbours[$priority]->getId()]);
+
+			//echo $node->getProperty('x') . ' - ' . $node->getProperty('y') . " : $arity - $colorsCount\n";
+			if ((! $isBorder && $arity > $colorsCount) ||  ($isBorder && $arity - 1 > $colorsCount))
+			{
+				return $neighbours[$priority];
+			}
 		}
 	}
 
-	throw new Exception('No neighbour ??? for ' . $currentNode->getId());
+	throw new Exception('No neighbour ??? for ' . $currentNode->getId() . " - " . count($neighbours));
 }
 
 
 function doScalarProduct($vector1, $vector2) {
 	return $vector1[0] * $vector2[1] + $vector1[1] * $vector2[0];
+}
+
+function traceSvg($polygons) {
+	$svg = '';
+
+	foreach($polygons as $polygon) {
+		$svg .= polygonToSvg($polygon);
+	}
+
+	$header = '
+	<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+	<svg width="100" height="100"
+     xmlns="http://www.w3.org/2000/svg" version="1.1">';
+	return $header . $svg . '</svg>';
+}
+
+function polygonToSvg($polygon) {
+	$path = '<path d="';
+	$first = true;
+	foreach($polygon as $node) {
+		$x = $node->getProperty('x');
+		$y = $node->getProperty('y');
+
+		if ($first) {
+			$path .= ' M ';
+			$first = false;
+		} else {
+			$path .= ' L ';
+		}
+		$path .= $x . ' ' . $y;
+
+	}
+
+	$path .= 'z" style="stroke: black;fill:none;"/>';
+
+	return $path;
 }

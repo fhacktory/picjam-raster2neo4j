@@ -11,7 +11,7 @@ PixelNode::initLabel($client);
 PointNode::initLabel($client);
 
 // open the image
-$imageFilepath = __DIR__ . '/../assets/example-image1.png';
+$imageFilepath = __DIR__ . '/../assets/lenna100x100.png';
 $rasterImage = new RasterImage($imageFilepath);
 
 
