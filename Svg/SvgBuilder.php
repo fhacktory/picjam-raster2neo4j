@@ -19,8 +19,8 @@ class SvgBuilder
 		$path = '<path d="';
 		$first = true;
 		foreach($polygon as $node) {
-			$x = $node->getProperty('x');
-			$y = $node->getProperty('y');
+			$x = $node->getDbNode()->getProperty('x');
+			$y = $node->getDbNode()->getProperty('y');
 
 			if ($first) {
 				$path .= ' M ';

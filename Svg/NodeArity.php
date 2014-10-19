@@ -33,19 +33,19 @@ class NodeArity
 		return $this->neighbours;
 	}
 
-	public function getPriorizedNeighbours($currentNode, $lastNode, $index) {
+	public function getPriorizedNeighbours(SvgNode $currentNode, SvgNode $lastNode, $index) {
 		$lastDirection = $this->getLastDirection($currentNode, $lastNode);
 
 		$neighbours = array();
 		foreach($this->getNeighbours() as $neighbourId) {
 			// we doesn't want to come back to the previous node
-			if (! empty($lastNode) && $neighbourId == $lastNode->getId()) {
+			if ($neighbourId == $lastNode->getDbNode()->getId()) {
 				continue;
 			}
 			$neighbour = $index[$neighbourId];
 			$direction = array(
-				$neighbour->getProperty('x') - $currentNode->getProperty('x'),
-				$neighbour->getProperty('y') - $currentNode->getProperty('y')
+				$neighbour->getDbNode()->getProperty('x') - $currentNode->getDbNode()->getProperty('x'),
+				$neighbour->getDbNode()->getProperty('y') - $currentNode->getDbNode()->getProperty('y')
 			);
 
 			$scalarProduct = $this->doScalarProduct($lastDirection, $direction);
@@ -59,14 +59,14 @@ class NodeArity
 		return $neighbours;
 	}
 
-	private function getLastDirection($currentNode, $lastNode) {
-		if (empty($lastNode)) {
+	private function getLastDirection(SvgNode $currentNode, SvgNode $lastNode) {
+		if ($currentNode->getDbNode()->getId() == $lastNode->getDbNode()->getId()) {
 			return array(0, -1);
 		}
 
 		return array(
-			$currentNode->getProperty('x') - $lastNode->getProperty('x'),
-			$currentNode->getProperty('y') - $lastNode->getProperty('y')
+			$currentNode->getDbNode()->getProperty('x') - $lastNode->getDbNode()->getProperty('x'),
+			$currentNode->getDbNode()->getProperty('y') - $lastNode->getDbNode()->getProperty('y')
 		);
 	}
 

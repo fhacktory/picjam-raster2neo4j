@@ -5,6 +5,7 @@ require("Svg/NodeArity.php");
 require("Svg/NodeArityCollection.php");
 require("Svg/NodeColor.php");
 require("Svg/NodeColorCollection.php");
+require("Svg/SvgNode.php");
 
 $client = new Everyman\Neo4j\Client();
 
@@ -33,24 +34,24 @@ $index = array();
 $colors = new NodeColorCollection();
 
 foreach($result as $row) {
-	$node1 = $row['n1'];
-	$node2 = $row['n2'];
+	$node1 = new SvgNode($row['n1']);
+	$node2 = new SvgNode($row['n2']);
 
-	$node1Id = $node1->getId();
+	$node1Id = $node1->getDbNode()->getId();
 	if ($arities->issetNodeArity($node1Id)) {
-		$arities->getNodeArity($node1Id)->addNeighbour($node2->getId());
+		$arities->getNodeArity($node1Id)->addNeighbour($node2->getDbNode()->getId());
 	} else {
-		$arities->setNodeArity($node1Id, new NodeArity(array($node2->getId())));
+		$arities->setNodeArity($node1Id, new NodeArity(array($node2->getDbNode()->getId())));
 		$nodes[] = $node1Id;
 		$index[$node1Id] = $node1;
 		$colors->initNodeColor($node1Id);
 	}
 
-	$node2Id = $node2->getId();
+	$node2Id = $node2->getDbNode()->getId();
 	if ($arities->issetNodeArity($node2Id)) {
-		$arities->getNodeArity($node2Id)->addNeighbour($node1->getId());
+		$arities->getNodeArity($node2Id)->addNeighbour($node1->getDbNode()->getId());
 	} else {
-		$arities->setNodeArity($node2Id, new NodeArity(array($node1->getId())));
+		$arities->setNodeArity($node2Id, new NodeArity(array($node1->getDbNode()->getId())));
 		$nodes[] = $node2Id;
 		$index[$node2Id] = $node2;
 		$colors->initNodeColor($node2Id);
@@ -76,15 +77,15 @@ function searchPolygons($nodes, NodeArityCollection $arities, $index, NodeColorC
 	foreach($nodes as $nodeId) {
 		$node = $index[$nodeId];
 
-		$arity = $arities->getNodeArity($node->getId())->count();
-		$colorsCount = $colors->getNodeColor($node->getId())->count();
+		$arity = $arities->getNodeArity($node->getDbNode()->getId())->count();
+		$colorsCount = $colors->getNodeColor($node->getDbNode()->getId())->count();
 
-		$isBorder = isBorder($node);
+		$isBorder = $node->isBorder();
 
 		//echo $node->getProperty('x') . ' - ' . $node->getProperty('y') . " : $arity - $colorsCount\n";
 		if ((! $isBorder && $arity > $colorsCount) ||  ($isBorder && $arity - 1 > $colorsCount))
 		{
-			echo "$nodeId - " . $node->getProperty('x') . ' : ' . $node->getProperty('y') . "\n";
+			echo "$nodeId - " . $node->getDbNode()->getProperty('x') . ' : ' . $node->getDbNode()->getProperty('y') . "\n";
 			$polygon = searchPolygon(array(), $node, $arities, $index, $colors, 1);
 			//var_dump(count($polygon));
 			$polygons[] = $polygon;
@@ -94,27 +95,18 @@ function searchPolygons($nodes, NodeArityCollection $arities, $index, NodeColorC
 	return $polygons;
 }
 
-function isBorder($node) {
-	$width = 100;
-	$height = 100;
-	$x = $node->getProperty('x');
-	$y = $node->getProperty('y');
-
-	return $x == 0 || $y == 0 || $x == $width || $y == $height;
-}
-
 function purgeUselessNodes($nodes, NodeArityCollection $arities, $index)
 {
 	$result = array();
 	$removed = array();
 	foreach($nodes as $nodeId) {
 		$node = $index[$nodeId];
-		$arity = $arities->getNodeArity($node->getId());
+		$arity = $arities->getNodeArity($node->getDbNode()->getId());
 		if ($arity->count() > 1) {
 			$result[] = $nodeId;
-			$removed[$node->getId()] = false;
+			$removed[$node->getDbNode()->getId()] = false;
 		} else {
-			$removed[$node->getId()] = true;
+			$removed[$node->getDbNode()->getId()] = true;
 		}
 	}
 
@@ -133,11 +125,11 @@ function purgeUselessNodes($nodes, NodeArityCollection $arities, $index)
 	return $result;
 }
 
-function searchPolygon($currentPolygon, $currentNode, NodeArityCollection $arities, $index, NodeColorCollection $colors, $polygonId) {
-	echo "## - " . $currentNode->getProperty('x') . ' : ' . $currentNode->getProperty('y') . "\n";
+function searchPolygon($currentPolygon, SvgNode $currentNode, NodeArityCollection $arities, $index, NodeColorCollection $colors, $polygonId) {
+	echo "## - " . $currentNode->getDbNode()->getProperty('x') . ' : ' . $currentNode->getDbNode()->getProperty('y') . "\n";
 	if(empty($currentPolygon)) {
 		// polygon beginning
-		$lastNode = null;
+		$lastNode = $currentNode;
 		try {
 			$nextNode = getNextNode($currentNode, $lastNode, $arities, $index, $colors);
 		} catch( Exception $e) {
@@ -145,7 +137,7 @@ function searchPolygon($currentPolygon, $currentNode, NodeArityCollection $ariti
 			return $currentPolygon;
 		}
 		$res = searchPolygon(array($currentNode), $nextNode, $arities, $index, $colors, $polygonId);
-		$colors->getNodeColor($currentNode->getId())->addColor($polygonId);
+		$colors->getNodeColor($currentNode->getDbNode()->getId())->addColor($polygonId);
 		return $res;
 	}
 
@@ -156,8 +148,8 @@ function searchPolygon($currentPolygon, $currentNode, NodeArityCollection $ariti
 
 	$lastNode = $currentPolygon[count($currentPolygon) - 1];
 	$currentPolygon[] = $currentNode;
-	$colors->getNodeColor($currentNode->getId())->addColor($polygonId);
-	if($colors->getNodeColor($currentNode->getId())->count() > $arities->getNodeArity($currentNode->getId())->count()) {
+	$colors->getNodeColor($currentNode->getDbNode()->getId())->addColor($polygonId);
+	if($colors->getNodeColor($currentNode->getDbNode()->getId())->count() > $arities->getNodeArity($currentNode->getDbNode()->getId())->count()) {
 		echo "erreur";
 		return $currentPolygon;
 	}
@@ -173,16 +165,16 @@ function searchPolygon($currentPolygon, $currentNode, NodeArityCollection $ariti
 	return searchPolygon($currentPolygon, $nextNode, $arities, $index, $colors, $polygonId);
 }
 
-function getNextNode($currentNode, $lastNode, NodeArityCollection $arities, $index, NodeColorCollection $colors) {
-	$arity = $arities->getNodeArity($currentNode->getId());
+function getNextNode(SvgNode $currentNode, SvgNode $lastNode, NodeArityCollection $arities, $index, NodeColorCollection $colors) {
+	$arity = $arities->getNodeArity($currentNode->getDbNode()->getId());
 	$neighbours = $arity->getPriorizedNeighbours($currentNode, $lastNode, $index);
 
 	foreach(array(-1, 0, 1) as $priority) {
 		if (isset($neighbours[$priority])) {
 
-			$isBorder = isBorder($neighbours[$priority]);
-			$arity = $arities->getNodeArity($neighbours[$priority]->getId())->count();
-			$colorsCount = $colors->getNodeColor($neighbours[$priority]->getId())->count();
+			$isBorder = $neighbours[$priority]->isBorder();
+			$arity = $arities->getNodeArity($neighbours[$priority]->getDbNode()->getId())->count();
+			$colorsCount = $colors->getNodeColor($neighbours[$priority]->getDbNode()->getId())->count();
 
 			//echo $node->getProperty('x') . ' - ' . $node->getProperty('y') . " : $arity - $colorsCount\n";
 			if ((! $isBorder && $arity > $colorsCount) ||  ($isBorder && $arity - 1 > $colorsCount))
@@ -192,5 +184,5 @@ function getNextNode($currentNode, $lastNode, NodeArityCollection $arities, $ind
 		}
 	}
 
-	throw new Exception('No neighbour ??? for ' . $currentNode->getId() . " - " . count($neighbours));
+	throw new Exception('No neighbour ??? for ' . $currentNode->getDbNode()->getId() . " - " . count($neighbours));
 }

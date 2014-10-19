@@ -13,6 +13,11 @@ class NodeArityCollection
 	{
 		return isset($this->nodeArity[$nodeId]);
 	}
+
+	/**
+	 * @param $nodeId
+	 * @return null|NodeArity
+	 */
 	public function getNodeArity($nodeId)
 	{
 		if ($this->issetNodeArity($nodeId)) {
