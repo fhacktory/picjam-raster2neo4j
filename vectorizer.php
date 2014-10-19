@@ -3,6 +3,8 @@ require("vendor/autoload.php");
 require("Svg/SvgBuilder.php");
 require("Svg/NodeArity.php");
 require("Svg/NodeArityCollection.php");
+require("Svg/NodeColor.php");
+require("Svg/NodeColorCollection.php");
 
 $client = new Everyman\Neo4j\Client();
 
@@ -28,7 +30,7 @@ $result = $query->getResultSet();
 $nodes = array();
 $arities = new NodeArityCollection();
 $index = array();
-$colors = array();
+$colors = new NodeColorCollection();
 
 foreach($result as $row) {
 	$node1 = $row['n1'];
@@ -41,7 +43,7 @@ foreach($result as $row) {
 		$arities->setNodeArity($node1Id, new NodeArity(array($node2->getId())));
 		$nodes[] = $node1Id;
 		$index[$node1Id] = $node1;
-		$colors[$node1Id] = array();
+		$colors->initNodeColor($node1Id);
 	}
 
 	$node2Id = $node2->getId();
@@ -51,7 +53,7 @@ foreach($result as $row) {
 		$arities->setNodeArity($node2Id, new NodeArity(array($node1->getId())));
 		$nodes[] = $node2Id;
 		$index[$node2Id] = $node2;
-		$colors[$node2Id] = array();
+		$colors->initNodeColor($node2Id);
 	}
 }
 
@@ -68,14 +70,14 @@ $svgBuilder = new SvgBuilder();
 
 file_put_contents(__DIR__ . '/test.svg', $svgBuilder->traceSvg($polygons));
 
-function searchPolygons($nodes, NodeArityCollection $arities, $index, &$colors) {
+function searchPolygons($nodes, NodeArityCollection $arities, $index, NodeColorCollection $colors) {
 	$polygons = array();
 
 	foreach($nodes as $nodeId) {
 		$node = $index[$nodeId];
 
 		$arity = $arities->getNodeArity($node->getId())->count();
-		$colorsCount = count($colors[$node->getId()]);
+		$colorsCount = $colors->getNodeColor($node->getId())->count();
 
 		$isBorder = isBorder($node);
 
@@ -131,7 +133,7 @@ function purgeUselessNodes($nodes, NodeArityCollection $arities, $index)
 	return $result;
 }
 
-function searchPolygon($currentPolygon, $currentNode, NodeArityCollection $arities, $index, &$colors, $polygonId) {
+function searchPolygon($currentPolygon, $currentNode, NodeArityCollection $arities, $index, NodeColorCollection $colors, $polygonId) {
 	echo "## - " . $currentNode->getProperty('x') . ' : ' . $currentNode->getProperty('y') . "\n";
 	if(empty($currentPolygon)) {
 		// polygon beginning
@@ -143,7 +145,7 @@ function searchPolygon($currentPolygon, $currentNode, NodeArityCollection $ariti
 			return $currentPolygon;
 		}
 		$res = searchPolygon(array($currentNode), $nextNode, $arities, $index, $colors, $polygonId);
-		$colors[$currentNode->getId()][] = $polygonId;
+		$colors->getNodeColor($currentNode->getId())->addColor($polygonId);
 		return $res;
 	}
 
@@ -154,8 +156,8 @@ function searchPolygon($currentPolygon, $currentNode, NodeArityCollection $ariti
 
 	$lastNode = $currentPolygon[count($currentPolygon) - 1];
 	$currentPolygon[] = $currentNode;
-	$colors[$currentNode->getId()][] = $polygonId;
-	if(count($colors[$currentNode->getId()]) > $arities->getNodeArity($currentNode->getId())->count()) {
+	$colors->getNodeColor($currentNode->getId())->addColor($polygonId);
+	if($colors->getNodeColor($currentNode->getId())->count() > $arities->getNodeArity($currentNode->getId())->count()) {
 		echo "erreur";
 		return $currentPolygon;
 	}
@@ -171,7 +173,7 @@ function searchPolygon($currentPolygon, $currentNode, NodeArityCollection $ariti
 	return searchPolygon($currentPolygon, $nextNode, $arities, $index, $colors, $polygonId);
 }
 
-function getNextNode($currentNode, $lastNode, NodeArityCollection $arities, $index, $colors) {
+function getNextNode($currentNode, $lastNode, NodeArityCollection $arities, $index, NodeColorCollection $colors) {
 	$arity = $arities->getNodeArity($currentNode->getId());
 	$neighbours = $arity->getPriorizedNeighbours($currentNode, $lastNode, $index);
 
@@ -180,7 +182,7 @@ function getNextNode($currentNode, $lastNode, NodeArityCollection $arities, $ind
 
 			$isBorder = isBorder($neighbours[$priority]);
 			$arity = $arities->getNodeArity($neighbours[$priority]->getId())->count();
-			$colorsCount = count($colors[$neighbours[$priority]->getId()]);
+			$colorsCount = $colors->getNodeColor($neighbours[$priority]->getId())->count();
 
 			//echo $node->getProperty('x') . ' - ' . $node->getProperty('y') . " : $arity - $colorsCount\n";
 			if ((! $isBorder && $arity > $colorsCount) ||  ($isBorder && $arity - 1 > $colorsCount))
