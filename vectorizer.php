@@ -171,38 +171,8 @@ function searchPolygon($currentPolygon, $currentNode, $arities, $index, &$colors
 }
 
 function getNextNode($currentNode, $lastNode, $arities, $index, $colors) {
-	if (empty($lastNode)) {
-		$lastDirection = array(0, -1);
-	} else {
-		$lastDirection = array(
-			$currentNode->getProperty('x') - $lastNode->getProperty('x'),
-			$currentNode->getProperty('y') - $lastNode->getProperty('y')
-		);
-	}
-
-
 	$arity = $arities[$currentNode->getId()];
-
-	$neighbours = array();
-	foreach($arity->getNeighbours() as $neighbourId) {
-		// we doesn't want to come back to the previous node
-		if (! empty($lastNode) && $neighbourId == $lastNode->getId()) {
-			continue;
-		}
-		$neighbour = $index[$neighbourId];
-		$direction = array(
-			$neighbour->getProperty('x') - $currentNode->getProperty('x'),
-			$neighbour->getProperty('y') - $currentNode->getProperty('y')
-		);
-
-		$scalarProduct = doScalarProduct($lastDirection, $direction);
-		if ($lastDirection[0] != 1) {
-			$scalarProduct *= -1;
-		}
-
-		$neighbours[$scalarProduct] = $neighbour;
-	}
-
+	$neighbours = $arity->getPriorizedNeighbours($currentNode, $lastNode, $index);
 
 	foreach(array(-1, 0, 1) as $priority) {
 		if (isset($neighbours[$priority])) {
@@ -220,9 +190,4 @@ function getNextNode($currentNode, $lastNode, $arities, $index, $colors) {
 	}
 
 	throw new Exception('No neighbour ??? for ' . $currentNode->getId() . " - " . count($neighbours));
-}
-
-
-function doScalarProduct($vector1, $vector2) {
-	return $vector1[0] * $vector2[1] + $vector1[1] * $vector2[0];
 }
