@@ -1,6 +1,6 @@
 <?php
 require("vendor/autoload.php");
-
+require("Svg/SvgBuilder.php");
 
 $client = new Everyman\Neo4j\Client();
 
@@ -62,8 +62,9 @@ do {
 
 $polygons = searchPolygons($nodes, $arities, $index, $colors);
 //var_dump(count($polygons));
-$svg = traceSvg($polygons);
-file_put_contents(__DIR__ . '/test.svg', $svg);
+$svgBuilder = new SvgBuilder();
+
+file_put_contents(__DIR__ . '/test.svg', $svgBuilder->traceSvg($polygons));
 
 function searchPolygons($nodes, $arities, $index, &$colors) {
 	$polygons = array();
@@ -223,40 +224,4 @@ function getNextNode($currentNode, $lastNode, $arities, $index, $colors) {
 
 function doScalarProduct($vector1, $vector2) {
 	return $vector1[0] * $vector2[1] + $vector1[1] * $vector2[0];
-}
-
-function traceSvg($polygons) {
-	$svg = '';
-
-	foreach($polygons as $polygon) {
-		$svg .= polygonToSvg($polygon);
-	}
-
-	$header = '
-	<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-	<svg width="100" height="100"
-     xmlns="http://www.w3.org/2000/svg" version="1.1">';
-	return $header . $svg . '</svg>';
-}
-
-function polygonToSvg($polygon) {
-	$path = '<path d="';
-	$first = true;
-	foreach($polygon as $node) {
-		$x = $node->getProperty('x');
-		$y = $node->getProperty('y');
-
-		if ($first) {
-			$path .= ' M ';
-			$first = false;
-		} else {
-			$path .= ' L ';
-		}
-		$path .= $x . ' ' . $y;
-
-	}
-
-	$path .= 'z" style="stroke: black;fill:none;"/>';
-
-	return $path;
 }
