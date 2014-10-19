@@ -162,13 +162,7 @@ function searchPolygon(SvgPolygon $currentPolygon, SvgNode $currentNode, NodeAri
 		return $currentPolygon;
 	}
 
-	try
-	{
-		$nextNode = getNextNode($currentNode, $lastNode, $arities, $index, $colors);
-	} catch (Exception $e) {
-		echo $e->getMessage() . "\n";
-		return $currentPolygon;
-	}
+	$nextNode = getNextNode($currentNode, $lastNode, $arities, $index, $colors);
 
 	return searchPolygon($currentPolygon, $nextNode, $arities, $index, $colors);
 }
