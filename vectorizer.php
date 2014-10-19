@@ -93,9 +93,13 @@ function searchPolygons($nodes, NodeArityCollection $arities, $index, NodeColorC
 			//echo "$nodeId - " . $node->getDbNode()->getProperty('x') . ' : ' . $node->getDbNode()->getProperty('y') . "\n";
 			$polygon = new SvgPolygon();
 			$polygon->setColor($colorId);
-			searchPolygon($polygon, $node, $arities, $index, $colors);
-			//var_dump(count($polygon));
-			$polygons[] = $polygon;
+			try {
+				searchPolygon($polygon, $node, $arities, $index, $colors);
+				//var_dump(count($polygon));
+				$polygons[] = $polygon;
+			} catch( Exception $e) {
+				echo $e->getMessage() . "\n";
+			}
 		}
 	}
 
@@ -137,12 +141,8 @@ function searchPolygon(SvgPolygon $currentPolygon, SvgNode $currentNode, NodeAri
 	if($currentPolygon->isEmpty()) {
 		// polygon beginning
 		$lastNode = $currentNode;
-		try {
-			$nextNode = getNextNode($currentNode, $lastNode, $arities, $index, $colors);
-		} catch( Exception $e) {
-			echo $e->getMessage() . "\n";
-			return $currentPolygon;
-		}
+		$nextNode = getNextNode($currentNode, $lastNode, $arities, $index, $colors);
+
 		$currentPolygon->addPoint($currentNode);
 		$res = searchPolygon($currentPolygon, $nextNode, $arities, $index, $colors);
 		$colors->getNodeColor($currentNode->getDbNode()->getId())->addColor($currentPolygon->getColor());
