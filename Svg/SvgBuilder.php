@@ -15,10 +15,10 @@ class SvgBuilder
 		return $header . $svg . '</svg>';
 	}
 
-	private function polygonToSvg($polygon) {
+	private function polygonToSvg(SvgPolygon $polygon) {
 		$path = '<path d="';
 		$first = true;
-		foreach($polygon as $node) {
+		foreach($polygon->getPoints() as $node) {
 			$x = $node->getDbNode()->getProperty('x');
 			$y = $node->getDbNode()->getProperty('y');
 

@@ -6,6 +6,7 @@ require("Svg/NodeArityCollection.php");
 require("Svg/NodeColor.php");
 require("Svg/NodeColorCollection.php");
 require("Svg/SvgNode.php");
+require("Svg/SvgPolygon.php");
 
 $client = new Everyman\Neo4j\Client();
 
@@ -76,7 +77,9 @@ file_put_contents(__DIR__ . '/test.svg', $svgBuilder->traceSvg($polygons));
 function searchPolygons($nodes, NodeArityCollection $arities, $index, NodeColorCollection $colors) {
 	$polygons = array();
 
+	$colorId = 0;
 	foreach($nodes as $nodeId) {
+		$colorId++;
 		$node = $index[$nodeId];
 
 		$arity = $arities->getNodeArity($node->getDbNode()->getId())->count();
@@ -88,7 +91,9 @@ function searchPolygons($nodes, NodeArityCollection $arities, $index, NodeColorC
 		if ((! $isBorder && $arity > $colorsCount) ||  ($isBorder && $arity - 1 > $colorsCount))
 		{
 			//echo "$nodeId - " . $node->getDbNode()->getProperty('x') . ' : ' . $node->getDbNode()->getProperty('y') . "\n";
-			$polygon = searchPolygon(array(), $node, $arities, $index, $colors, 1);
+			$polygon = new SvgPolygon();
+			$polygon->setColor($colorId);
+			searchPolygon($polygon, $node, $arities, $index, $colors);
 			//var_dump(count($polygon));
 			$polygons[] = $polygon;
 		}
@@ -127,9 +132,9 @@ function purgeUselessNodes($nodes, NodeArityCollection $arities, $index)
 	return $result;
 }
 
-function searchPolygon($currentPolygon, SvgNode $currentNode, NodeArityCollection $arities, $index, NodeColorCollection $colors, $polygonId) {
+function searchPolygon(SvgPolygon $currentPolygon, SvgNode $currentNode, NodeArityCollection $arities, $index, NodeColorCollection $colors) {
 	//echo "## - " . $currentNode->getDbNode()->getProperty('x') . ' : ' . $currentNode->getDbNode()->getProperty('y') . "\n";
-	if(empty($currentPolygon)) {
+	if($currentPolygon->isEmpty()) {
 		// polygon beginning
 		$lastNode = $currentNode;
 		try {
@@ -138,19 +143,20 @@ function searchPolygon($currentPolygon, SvgNode $currentNode, NodeArityCollectio
 			echo $e->getMessage() . "\n";
 			return $currentPolygon;
 		}
-		$res = searchPolygon(array($currentNode), $nextNode, $arities, $index, $colors, $polygonId);
-		$colors->getNodeColor($currentNode->getDbNode()->getId())->addColor($polygonId);
+		$currentPolygon->addPoint($currentNode);
+		$res = searchPolygon($currentPolygon, $nextNode, $arities, $index, $colors);
+		$colors->getNodeColor($currentNode->getDbNode()->getId())->addColor($currentPolygon->getColor());
 		return $res;
 	}
 
-	if($currentPolygon[0] == $currentNode) {
+	if($currentPolygon->isClosed($currentNode)) {
 		// the polygon is closed
 		return $currentPolygon;
 	}
 
-	$lastNode = $currentPolygon[count($currentPolygon) - 1];
-	$currentPolygon[] = $currentNode;
-	$colors->getNodeColor($currentNode->getDbNode()->getId())->addColor($polygonId);
+	$lastNode = $currentPolygon->getLastPoint();
+	$currentPolygon->addPoint($currentNode);
+	$colors->getNodeColor($currentNode->getDbNode()->getId())->addColor($currentPolygon->getColor());
 	if($colors->getNodeColor($currentNode->getDbNode()->getId())->count() > $arities->getNodeArity($currentNode->getDbNode()->getId())->count()) {
 		echo "erreur";
 		return $currentPolygon;
@@ -164,7 +170,7 @@ function searchPolygon($currentPolygon, SvgNode $currentNode, NodeArityCollectio
 		return $currentPolygon;
 	}
 
-	return searchPolygon($currentPolygon, $nextNode, $arities, $index, $colors, $polygonId);
+	return searchPolygon($currentPolygon, $nextNode, $arities, $index, $colors);
 }
 
 function getNextNode(SvgNode $currentNode, SvgNode $lastNode, NodeArityCollection $arities, $index, NodeColorCollection $colors) {
