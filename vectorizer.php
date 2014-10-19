@@ -2,6 +2,7 @@
 require("vendor/autoload.php");
 require("Svg/SvgBuilder.php");
 require("Svg/NodeArity.php");
+require("Svg/NodeArityCollection.php");
 
 $client = new Everyman\Neo4j\Client();
 
@@ -25,7 +26,7 @@ $query = new Everyman\Neo4j\Cypher\Query(
 $result = $query->getResultSet();
 
 $nodes = array();
-$arities = array();
+$arities = new NodeArityCollection();
 $index = array();
 $colors = array();
 
@@ -34,20 +35,20 @@ foreach($result as $row) {
 	$node2 = $row['n2'];
 
 	$node1Id = $node1->getId();
-	if (isset($arities[$node1Id])) {
-		$arities[$node1Id]->addNeighbour($node2->getId());
+	if ($arities->issetNodeArity($node1Id)) {
+		$arities->getNodeArity($node1Id)->addNeighbour($node2->getId());
 	} else {
-		$arities[$node1Id] = new NodeArity(array($node2->getId()));
+		$arities->setNodeArity($node1Id, new NodeArity(array($node2->getId())));
 		$nodes[] = $node1Id;
 		$index[$node1Id] = $node1;
 		$colors[$node1Id] = array();
 	}
 
 	$node2Id = $node2->getId();
-	if (isset($arities[$node2Id])) {
-		$arities[$node2Id]->addNeighbour($node1->getId());
+	if ($arities->issetNodeArity($node2Id)) {
+		$arities->getNodeArity($node2Id)->addNeighbour($node1->getId());
 	} else {
-		$arities[$node2Id] = new NodeArity(array($node1->getId()));
+		$arities->setNodeArity($node2Id, new NodeArity(array($node1->getId())));
 		$nodes[] = $node2Id;
 		$index[$node2Id] = $node2;
 		$colors[$node2Id] = array();
@@ -56,7 +57,7 @@ foreach($result as $row) {
 
 do {
 	$previousCount = count($nodes);
-	list($nodes, $arities) = purgeUselessNodes($nodes, $arities, $index);
+	$nodes = purgeUselessNodes($nodes, $arities, $index);
 	$currentCount = count($nodes);
 } while($previousCount !== $currentCount);
 
@@ -67,13 +68,13 @@ $svgBuilder = new SvgBuilder();
 
 file_put_contents(__DIR__ . '/test.svg', $svgBuilder->traceSvg($polygons));
 
-function searchPolygons($nodes, $arities, $index, &$colors) {
+function searchPolygons($nodes, NodeArityCollection $arities, $index, &$colors) {
 	$polygons = array();
 
 	foreach($nodes as $nodeId) {
 		$node = $index[$nodeId];
 
-		$arity = $arities[$node->getId()]->count();
+		$arity = $arities->getNodeArity($node->getId())->count();
 		$colorsCount = count($colors[$node->getId()]);
 
 		$isBorder = isBorder($node);
@@ -100,13 +101,13 @@ function isBorder($node) {
 	return $x == 0 || $y == 0 || $x == $width || $y == $height;
 }
 
-function purgeUselessNodes($nodes, $arities, $index)
+function purgeUselessNodes($nodes, NodeArityCollection $arities, $index)
 {
 	$result = array();
 	$removed = array();
 	foreach($nodes as $nodeId) {
 		$node = $index[$nodeId];
-		$arity = $arities[$node->getId()];
+		$arity = $arities->getNodeArity($node->getId());
 		if ($arity->count() > 1) {
 			$result[] = $nodeId;
 			$removed[$node->getId()] = false;
@@ -115,9 +116,9 @@ function purgeUselessNodes($nodes, $arities, $index)
 		}
 	}
 
-	foreach($arities as $id => $arity) {
+	foreach($arities->getAllNodeArity() as $id => $arity) {
 		if ($removed[$id]) {
-			unset($arities[$id]);
+			$arities->removeNodeArity($id);
 			continue;
 		}
 		foreach($arity->getNeighbours() as $n => $neighbour) {
@@ -127,10 +128,10 @@ function purgeUselessNodes($nodes, $arities, $index)
 		}
 	}
 
-	return array($result, $arities);
+	return $result;
 }
 
-function searchPolygon($currentPolygon, $currentNode, $arities, $index, &$colors, $polygonId) {
+function searchPolygon($currentPolygon, $currentNode, NodeArityCollection $arities, $index, &$colors, $polygonId) {
 	echo "## - " . $currentNode->getProperty('x') . ' : ' . $currentNode->getProperty('y') . "\n";
 	if(empty($currentPolygon)) {
 		// polygon beginning
@@ -154,7 +155,7 @@ function searchPolygon($currentPolygon, $currentNode, $arities, $index, &$colors
 	$lastNode = $currentPolygon[count($currentPolygon) - 1];
 	$currentPolygon[] = $currentNode;
 	$colors[$currentNode->getId()][] = $polygonId;
-	if(count($colors[$currentNode->getId()]) > $arities[$currentNode->getId()]->count()) {
+	if(count($colors[$currentNode->getId()]) > $arities->getNodeArity($currentNode->getId())->count()) {
 		echo "erreur";
 		return $currentPolygon;
 	}
@@ -170,15 +171,15 @@ function searchPolygon($currentPolygon, $currentNode, $arities, $index, &$colors
 	return searchPolygon($currentPolygon, $nextNode, $arities, $index, $colors, $polygonId);
 }
 
-function getNextNode($currentNode, $lastNode, $arities, $index, $colors) {
-	$arity = $arities[$currentNode->getId()];
+function getNextNode($currentNode, $lastNode, NodeArityCollection $arities, $index, $colors) {
+	$arity = $arities->getNodeArity($currentNode->getId());
 	$neighbours = $arity->getPriorizedNeighbours($currentNode, $lastNode, $index);
 
 	foreach(array(-1, 0, 1) as $priority) {
 		if (isset($neighbours[$priority])) {
 
 			$isBorder = isBorder($neighbours[$priority]);
-			$arity = $arities[$neighbours[$priority]->getId()]->count();
+			$arity = $arities->getNodeArity($neighbours[$priority]->getId())->count();
 			$colorsCount = count($colors[$neighbours[$priority]->getId()]);
 
 			//echo $node->getProperty('x') . ' - ' . $node->getProperty('y') . " : $arity - $colorsCount\n";
